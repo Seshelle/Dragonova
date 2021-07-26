@@ -1,0 +1,52 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+//RWTexture2D<float4> Result;
+
+struct Pix
+{
+	float r;
+	float g;
+	float b;
+	float a;
+};
+
+RWStructuredBuffer<Pix> buf;
+RWStructuredBuffer<int> size;
+RWStructuredBuffer<float> data;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	float3 p = float3(data[0], data[1], data[2]);
+	int width = size[0];
+	int height = size[1];
+
+	//convert p units to pixel coordinates
+	float colXZ = 0;
+	float colYZ = 0;
+	float colXY = 0;
+
+	int pixelX = round(((p.x + 1) / 2) * width);
+	int pixelY = round(((p.z + 1) / 2) * height);
+	Pix DXZ = buf[pixelX + pixelY * width];
+
+	pixelX = round(((p.y + 1) / 2) * width);
+	pixelY = round(((p.z + 1) / 2) * height);
+	Pix DYZ = buf[pixelX + pixelY * width];
+
+	pixelX = round(((p.x + 1) / 2) * width);
+	pixelY = round(((p.y + 1) / 2) * height);
+	Pix DXY = buf[pixelX + pixelY * width];
+
+	colXZ += DXZ.r * 0.08 + DXZ.g * 0.008;
+	colYZ += DYZ.r * 0.08 + DYZ.g * 0.008;
+	colXY += DXY.r * 0.08 + DXY.g * 0.008;
+
+	p = abs(p);
+	p *= p;
+	p /= p.x + p.y + p.z;
+
+	float final = colYZ * p.x + colXZ * p.y + colXY * p.z;
+	data[0] = final;
+}
