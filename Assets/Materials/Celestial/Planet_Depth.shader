@@ -1,9 +1,10 @@
-Shader "Unlit/Planet_Shader_Ver5"
+Shader "Unlit/Planet_Depth"
 {
 	Properties
 	{
 		_MainTex("Texture", 2D) = "white" {}
 		_GrassTex("Grass", 2D) = "white" {}
+		_ShadowTex("Shadow", 2D) = "Black" {}
 		_Radius("Radius", float) = 0.4
 		_Scale("Scale", float) = 2
 		_SeaLevel("Sea Level", float) = 0.45
@@ -27,6 +28,7 @@ Shader "Unlit/Planet_Shader_Ver5"
 				sampler2D _MainTex;
 				sampler2D _GrassTex;
 				sampler2D _CameraDepthTexture;
+				sampler2D _ShadowTex;
 				float4 _MainTex_ST;
 				float _Radius;
 				float _Scale;
@@ -201,7 +203,7 @@ Shader "Unlit/Planet_Shader_Ver5"
 					[loop]for (half i = 0; i < SH_STEPS; i++)
 					{
 						half h = getDist(mad(t, rd, ro));
-						half y = h * h / (2*ph);
+						half y = h * h / (2 * ph);
 						//float d = sqrt(h*h - y * y);
 						half d = mad(0.5, min(h, y), max(h, y));
 						//float d = length(float2(h, y));
@@ -269,6 +271,29 @@ Shader "Unlit/Planet_Shader_Ver5"
 					half3 albedo = pow(tex2D(_GrassTex, uv), rcp(0.4545));
 					const float3 nor = getNormal(p);
 
+					float3 worldPos = mul(unity_ObjectToWorld, p);
+					float depth = distance(_WorldSpaceCameraPos, worldPos);
+					float4 near = float4 (depth >= _LightSplitsNear);				
+					float4 far = float4 (depth < _LightSplitsFar);
+					float4 weights = near * far;
+
+					float3 shadowCoord0 = mul(unity_WorldToShadow[0], float4(worldPos, 1.)).xyz;
+					float3 shadowCoord1 = mul(unity_WorldToShadow[1], float4(worldPos, 1.)).xyz;
+					float3 shadowCoord2 = mul(unity_WorldToShadow[2], float4(worldPos, 1.)).xyz;
+					float3 shadowCoord3 = mul(unity_WorldToShadow[3], float4(worldPos, 1.)).xyz;
+
+					float3 coord =									// A smart way to avoid branching. Calculating the final shadow texture uv coordinates per fragment
+						shadowCoord0 * weights.x +					// case: Cascaded one
+						shadowCoord1 * weights.y +					// case: Cascaded two
+						shadowCoord2 * weights.z +					// case: Cascaded three
+						shadowCoord3 * weights.w;					// case: Cascaded four
+
+					float atten = tex2D(_ShadowTex, coord.xy).r;	// We don't need to turn it in linear space since Coord.z is also in log based zbuffer
+					atten = atten > coord.z;
+
+					/*float4 shadow = mul(unity_WorldToShadow[0], float4(worldPos, 1.0));
+					float atten = abs(ceil(tex2D(_ShadowTex, shadow.xy).r) - 1);*/
+
 					//compare sphere normal to land normal to determine slope
 					const float3 flatNor = normalize(p);
 					const float slope = dot(nor, flatNor);
@@ -280,8 +305,8 @@ Shader "Unlit/Planet_Shader_Ver5"
 					albedo = lerp(albedo, half3(0.07, 0.05, 0.04), beach);
 
 					// key light
-					const half dif = saturate(dot(nor, lig)) * calcSoftshadow(p, lig);
-					color.rgb += 2 * albedo * dif;
+					const float dif = saturate(dot(nor, lig)) * calcSoftshadow(p, lig);
+					color.rgb += 2 * albedo * dif * atten;
 
 					// ambient light
 					//float occ = calcAO(p, nor);
@@ -292,7 +317,7 @@ Shader "Unlit/Planet_Shader_Ver5"
 					return color;
 				}
 
-				half4 oceanColor(const float3 ro, const float3 rd, const float3 lig, const float4 hit, 
+				half4 oceanColor(const float3 ro, const float3 rd, const float3 lig, const float4 hit,
 					const float4 oceanHit, const bool underwater, const float oceanDepth) {
 					//const float shoreDepth = length(oceanHit.xyz) - getHeight(oceanHit.xyz);
 					half4 color = 0;
@@ -381,14 +406,17 @@ Shader "Unlit/Planet_Shader_Ver5"
 
 			Pass
 			{
-				Tags {"LightMode" = "ForwardBase"}
-				ZTest Off
-				Cull Front
+				Tags {"Queue" = "Opaque"}
+				ZTest On
+				Cull Off
 				Blend SrcAlpha OneMinusSrcAlpha
 				CGPROGRAM
 				#pragma vertex vert
 				#pragma fragment frag
-				#pragma multi_compile_fwdbase
+
+				struct shadowInput {
+					SHADOW_COORDS(0)
+				};
 
 				fixed4 frag(v2f i, out float outDepth : SV_Depth) : SV_Target
 				{
@@ -404,7 +432,8 @@ Shader "Unlit/Planet_Shader_Ver5"
 					float depth = tex2D(_CameraDepthTexture, screenUV).r;
 					if (depth <= 0) depth = -100;
 
-					const float4 hit = rmDist(ro, rd, depth);
+					//const float4 hit = rmDist(ro, rd, depth);
+					const float4 hit = raymarch(ro, rd);
 					const float3 p = hit.xyz;
 					half4 color = half4(0, 0, 0, 1);
 					const float3 lig = normalize(mul(unity_WorldToObject, float3(-1.0, 0, 0)));
@@ -431,15 +460,10 @@ Shader "Unlit/Planet_Shader_Ver5"
 						maxBlend = 1;
 						color.rgb += terrainColor(p, lig, hit.w);
 
-						float3 worldPos = mul(unity_ObjectToWorld, hit.xyz);
-
-					#if defined(SHADOWS_SCREEN)
-						clipPos.xy = (float2(clipPos.x, -clipPos.y) + clipPos.w) * 0.5 / clipPos.w;
-						float attenuation = tex2D(_ShadowMapTexture, clipPos.xy).r;
-					#else
-						UNITY_LIGHT_ATTENUATION(attenuation, 0, worldPos);
-					#endif
-						color.rgb *= attenuation;
+						/*float3 worldPos = mul(unity_ObjectToWorld, hit.xyz);
+						float4 shadow = mul(unity_WorldToShadow[0], float4(worldPos, 1.0));
+						float atten = tex2D(_ShadowTex, shadow.xy).r;
+						color.rgb *= -atten + 1.25;*/
 					}
 
 					half4 newColor = addOceanAtmo(ro, rd, p, hit.w, lig, air);
@@ -454,7 +478,7 @@ Shader "Unlit/Planet_Shader_Ver5"
 			/*Pass
 			{
 				Tags { "LightMode" = "ShadowCaster" }
-				ZWrite On
+				ZWrite On ZTest Equal
 
 				CGPROGRAM
 				#pragma vertex vert

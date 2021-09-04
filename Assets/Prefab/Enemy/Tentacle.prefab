@@ -99,11 +99,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   team: 1
-  Maxhealth: 100
+  Maxhealth: 20
   speed: 100
   turnSpeed: 50
   projectile: {fileID: 5307985901994406669, guid: 8f45b5dbaf6dd8249bbf8c05ecd87b64, type: 3}
-  fireCooldown: 1
 --- !u!54 &8644292850960920732
 Rigidbody:
   m_ObjectHideFlags: 0

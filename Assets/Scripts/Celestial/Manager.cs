@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Manager : MonoBehaviour
 {
-
+    public static bool gamePaused = false;
     GameObject[] planetList;
     GameObject player;
     HashSet<GameObject> targetList = new HashSet<GameObject>();
@@ -13,6 +13,22 @@ public class Manager : MonoBehaviour
     {
         player = GameObject.FindGameObjectWithTag("Player");
         planetList = GameObject.FindGameObjectsWithTag("Planet");
+    }
+
+    private void Update()
+    {
+        if (Input.GetButtonDown("Cancel"))
+        {
+            gamePaused = !gamePaused;
+            if (gamePaused)
+            {
+                Time.timeScale = 0;
+            }
+            else
+            {
+                Time.timeScale = 1;
+            }
+        }
     }
 
     public Planet GetClosestPlanet(Vector3 position)

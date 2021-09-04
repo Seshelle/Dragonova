@@ -98,8 +98,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 200
-  damage: 40
+  hitScan: 0
+  damage: 5
   lifetime: 5
+  fireRate: 0.1
   terrainDamage: 0.001
   resting: 0
   aftermath: {fileID: 5220355781295659977, guid: 401f29a6d92cc244c98490777cd7e69e, type: 3}

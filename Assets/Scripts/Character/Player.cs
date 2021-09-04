@@ -59,88 +59,91 @@ public class Player : Combat_Entity
         health += regen * Time.deltaTime;
         if (health > Maxhealth) health = Maxhealth;
 
-        //reduce sensitivity when looking at extreme up or down angle
-        float difference = 20;
-        float rotX = camera.transform.localRotation.eulerAngles.x;
-        if (rotX > 180)
+        if (!Manager.gamePaused)
         {
-            difference = rotX - (360 - maxAngle);
-        }
-        else
-        {
-            difference = maxAngle - rotX;
-        }
-        if (difference < 20)
-        {
-            difference = 20;
-        }
-
-        // get the mouse inputs
-        float y = Input.GetAxis("Mouse X") * (sensitivity / 2) * difference / (maxAngle / 2);
-        float x = Input.GetAxis("Mouse Y") * sensitivity;
-        camera.transform.Rotate(-x, y, 0);
-        rotX = camera.transform.localRotation.eulerAngles.x;
-        if (rotX > 180 && rotX < (360 - maxAngle))
-        {
-            rotX = (360 - maxAngle);
-        }
-        else if (rotX < 180 && rotX > maxAngle)
-        {
-            rotX = maxAngle;
-        }
-        camera.transform.localRotation = Quaternion.Euler(rotX, camera.transform.localRotation.eulerAngles.y, 0);
-
-        //dismount dragon if riding dragon
-        if (mounted && Input.GetButtonDown("Jump"))
-        {
-            SetMounted(false);
-        }
-
-        //fire gun
-        lastFire += Time.deltaTime;
-        if (lastFire >= fireRate && Input.GetButton("Fire1"))
-        {
-            lastFire = 0;
-            Vector3 spawnPoint = transform.position + camera.transform.forward * 2 + camera.transform.right * 0.5f - camera.transform.up * 0.3f;
-            GameObject newProj = GameObject.Instantiate(projectile.gameObject, spawnPoint, camera.transform.rotation);
-            Projectile projComponent = newProj.GetComponent<Projectile>();
-            projComponent.SetProperties(GetMomentum(), team);
-        }
-
-        //grapple
-        if (!mounted && grapple.resting && Input.GetButtonDown("Grapple"))
-        {
-            grapple.SetResting(true);
-            Vector3 spawnPoint = transform.position + camera.transform.forward * 2 + camera.transform.right * 0.5f - camera.transform.up * 0.3f;
-            grapple.transform.position = spawnPoint;
-            grapple.transform.rotation = camera.transform.rotation;
-            grapple.SetProperties(GetMomentum(), team);
-            grapple.StartGrapple();
-        }
-
-        //interact
-        if (Input.GetButtonDown("Interact"))
-        {
-            if (Vector3.Distance(transform.position, dragon.transform.position) < 40)
+            //reduce sensitivity when looking at extreme up or down angle
+            float difference = 20;
+            float rotX = camera.transform.localRotation.eulerAngles.x;
+            if (rotX > 180)
             {
-                SetMounted(true);
-            }
-        }
-
-        //build
-        if (Input.GetButtonDown("Cycle"))
-        {
-            if (!holdingItem)
-            {
-                holdingItem = true;
-                GameObject block = GameObject.Instantiate(structure, camera.transform);
-                block.transform.localPosition = Vector3.forward * 5;
-                heldItem = block;
+                difference = rotX - (360 - maxAngle);
             }
             else
             {
-                holdingItem = false;
-                heldItem.transform.parent = manager.GetClosestPlanet(transform.position).transform;
+                difference = maxAngle - rotX;
+            }
+            if (difference < 20)
+            {
+                difference = 20;
+            }
+
+            // get mouse input for camera rotation
+            float y = Input.GetAxis("Mouse X") * (sensitivity / 2) * difference / (maxAngle / 2);
+            float x = Input.GetAxis("Mouse Y") * sensitivity;
+            camera.transform.Rotate(-x, y, 0);
+            rotX = camera.transform.localRotation.eulerAngles.x;
+            if (rotX > 180 && rotX < (360 - maxAngle))
+            {
+                rotX = (360 - maxAngle);
+            }
+            else if (rotX < 180 && rotX > maxAngle)
+            {
+                rotX = maxAngle;
+            }
+            camera.transform.localRotation = Quaternion.Euler(rotX, camera.transform.localRotation.eulerAngles.y, 0);
+
+            //dismount dragon if riding dragon
+            if (mounted && Input.GetButtonDown("Jump"))
+            {
+                SetMounted(false);
+            }
+
+            //fire gun
+            lastFire += Time.deltaTime;
+            if (lastFire >= fireRate && Input.GetButton("Fire1"))
+            {
+                lastFire = 0;
+                Vector3 spawnPoint = transform.position + camera.transform.forward * 2 + camera.transform.right * 0.5f - camera.transform.up * 0.3f;
+                GameObject newProj = GameObject.Instantiate(projectile.gameObject, spawnPoint, camera.transform.rotation);
+                Projectile projComponent = newProj.GetComponent<Projectile>();
+                projComponent.SetProperties(GetMomentum(), team);
+            }
+
+            //grapple
+            if (!mounted && grapple.resting && Input.GetButtonDown("Grapple"))
+            {
+                grapple.SetResting(true);
+                Vector3 spawnPoint = transform.position + camera.transform.forward * 2 + camera.transform.right * 0.5f - camera.transform.up * 0.3f;
+                grapple.transform.position = spawnPoint;
+                grapple.transform.rotation = camera.transform.rotation;
+                grapple.SetProperties(GetMomentum(), team);
+                grapple.StartGrapple();
+            }
+
+            //interact
+            if (Input.GetButtonDown("Interact"))
+            {
+                if (Vector3.Distance(transform.position, dragon.transform.position) < 40)
+                {
+                    SetMounted(true);
+                }
+            }
+
+            //build
+            if (Input.GetButtonDown("Cycle"))
+            {
+                if (!holdingItem)
+                {
+                    holdingItem = true;
+                    GameObject block = GameObject.Instantiate(structure, camera.transform);
+                    block.transform.localPosition = Vector3.forward * 5;
+                    heldItem = block;
+                }
+                else
+                {
+                    holdingItem = false;
+                    heldItem.transform.parent = manager.GetClosestPlanet(transform.position).transform;
+                }
             }
         }
     }

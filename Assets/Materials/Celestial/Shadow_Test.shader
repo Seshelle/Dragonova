@@ -172,7 +172,7 @@ Shader "Complete Sphere Impostor"
 			samplerCUBE _CubeTex;
 
 			// reuse the fragment shader for both forward base and forward add passes
-			fixed4 frag_forward(v2f i
+		fixed4 frag_forward(v2f i
 			#if defined(USE_CONSERVATIVE_DEPTH)
 				, out float outDepth : SV_DepthLessEqual
 			#else

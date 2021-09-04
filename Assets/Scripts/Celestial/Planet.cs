@@ -17,6 +17,8 @@ public class Planet : MonoBehaviour
     float xOrg = 0;
     float yOrg = 0;
 
+    public GameObject tree;
+
 #if UNITY_EDITOR
     [CustomEditor(typeof(Planet))]
     public class SomeScriptEditor : Editor
@@ -28,7 +30,7 @@ public class Planet : MonoBehaviour
             Planet myScript = (Planet)target;
             if (GUILayout.Button("Add Noise"))
             {
-                myScript.CalcNoise(69);
+                myScript.CalcNoise(0);
             }
         }
     }
@@ -41,6 +43,7 @@ public class Planet : MonoBehaviour
     private float radius;
     private float mainScale;
     private float seaLevel;
+    private float worldSeaLevel;
 
     void Start()
     {
@@ -49,10 +52,13 @@ public class Planet : MonoBehaviour
         CalcNoise(levelData.GetPlanetSeed());
 
         //sync with current shader properties
-        if (!mat) mat = GetComponent<Renderer>().sharedMaterial;
+        if (!mat) mat = GetComponent<Renderer>().material;
         radius = mat.GetFloat("_Radius");
         mainScale = mat.GetFloat("_Scale");
         seaLevel = mat.GetFloat("_SeaLevel");
+        worldSeaLevel = (radius + seaLevel) * transform.localScale.x;
+
+        AddFoliage(levelData.GetPlanetSeed());
     }
 
     /*float terrain(float2 p)
@@ -76,10 +82,10 @@ public class Planet : MonoBehaviour
         return a;
     }*/
 
-    private void FixedUpdate()
+    /*private void FixedUpdate()
     {
-        transform.Rotate(Vector3.up * Time.deltaTime * 0);
-    }
+        transform.Rotate(Vector3.up * Time.deltaTime * rotationSpeed);
+    }*/
 
     float FractalNoise(float x, float y)
     {
@@ -141,13 +147,27 @@ public class Planet : MonoBehaviour
         // Copy the pixel data to the texture and load it into the GPU.
         noiseTex.SetPixels(pix);
         noiseTex.Apply(false);
-        if (!mat) mat = GetComponent<Renderer>().sharedMaterial;
+        if (!mat) mat = GetComponent<Renderer>().material;
         ApplyToSharedMaterial();
     }
 
     void ApplyToSharedMaterial()
     {
         mat.SetTexture("_MainTex", noiseTex);
+    }
+
+    void AddFoliage(int seed)
+    {
+        for (int i = 0; i < 10000; i++)
+        {
+            Vector3 treePos = new Vector3(Random.value * 2 - 1, Random.value * 2 - 1, Random.value * 2 - 1).normalized;
+            float altitude = GetPlanetHeight(treePos, -1);
+            if (altitude > worldSeaLevel)
+            {
+                Quaternion treeRot = Quaternion.LookRotation(-treePos) * Quaternion.Euler(-90, 0, 0);
+                GameObject.Instantiate(tree, treePos * altitude, treeRot);
+            }
+        }
     }
 
     public bool IsInPlanet(Vector3 pos)
@@ -186,11 +206,7 @@ public class Planet : MonoBehaviour
         float sum = Vector3.Dot(p, octant);
         Vector3 octahedron = p / sum;
 
-        Vector2 octxy = new Vector2(octahedron.x, octahedron.y);
-
-        octxy = new Vector2(octxy.x + 1.2f, octxy.y + 1.2f) * 0.5f;
-
-        return octxy;
+        return new Vector2(octahedron.x + 1.2f, octahedron.y + 1.2f) * 0.5f;
     }
 
     public float GetPlanetHeight(Vector3 position, float size)
@@ -210,7 +226,6 @@ public class Planet : MonoBehaviour
             adj = new Color(adj.r, col.g, 0);
             col = Color.Lerp(col, adj, blend * 2);
         }
-
         float height = radius - (col.r + col.g) * mainScale;
         return height * transform.localScale.x + size;
     }
