@@ -4,9 +4,8 @@ using UnityEngine;
 
 public class Dragon : MonoBehaviour
 {
-    public float moveSpeed = 50;
     public float slowSpeed = 50;
-    public float fastSpeed = 100;
+    public float boostSpeed = 100;
     public float maxSpeed = 200;
     public float deceleration = 20;
     public float boostCooldown = 2;
@@ -17,9 +16,9 @@ public class Dragon : MonoBehaviour
     Player player;
     Manager manager;
     Rigidbody rigidbody;
+    float moveSpeed = 50;
     Vector3 rotVec;
     bool isMounted = true;
-    bool goFast = false;
     float timeSinceBoost = 1000;
 
     private void Start()
@@ -34,38 +33,32 @@ public class Dragon : MonoBehaviour
     {
         if (isMounted)
         {
-            timeSinceBoost += Time.deltaTime;
-            if (timeSinceBoost >= boostCooldown)
+            //speed decays toward default speed naturally
+            if (moveSpeed > slowSpeed)
             {
-                //decay towards next lowest speed level
-                if ((goFast && moveSpeed > fastSpeed) || (!goFast && moveSpeed > slowSpeed))
-                {
-                    moveSpeed -= Time.deltaTime * deceleration;
-                }
-                //boost forward
-                if (Input.mouseScrollDelta.y > 0)
-                {
-                    timeSinceBoost = 0;
-                    goFast = true;
-                    moveSpeed = maxSpeed;
-                }
-                else if (Input.mouseScrollDelta.y < 0)
-                {
-                    timeSinceBoost = 0;
-                    goFast = false;
-                    if (moveSpeed > slowSpeed)
-                    {
-                        moveSpeed = slowSpeed + 10;
-                    }
-                    else
-                    {
-                        moveSpeed = 0;
-                    }
-                }
+                moveSpeed -= Time.deltaTime * deceleration;
             }
+
+            if (Input.GetButton("Grapple"))
+            {
+                moveSpeed -= Time.deltaTime * deceleration * 3;
+            }
+
+            timeSinceBoost += Time.deltaTime;
+            if (timeSinceBoost >= boostCooldown && Input.GetButton("Sprint"))
+            {
+                //boost forward
+                timeSinceBoost = 0;
+                moveSpeed += boostSpeed;
+            }
+
+            if (moveSpeed > maxSpeed) moveSpeed = maxSpeed;
+            if (moveSpeed < 0) moveSpeed = 0;
 
             //turn with wasd
             rotVec = new Vector3(Input.GetAxis("Vertical"), Input.GetAxis("Horizontal"), Input.GetAxis("Roll"));
+            Quaternion deltaRotation = Quaternion.Euler(rotVec * turningSpeed * Time.deltaTime);
+            rigidbody.MoveRotation(rigidbody.rotation * deltaRotation);
         }
     }
 
@@ -74,8 +67,8 @@ public class Dragon : MonoBehaviour
         if (isMounted)
         {
             //transform.Rotate(rotVec * turningSpeed * Time.deltaTime);
-            Quaternion deltaRotation = Quaternion.Euler(rotVec * turningSpeed * Time.deltaTime);
-            rigidbody.MoveRotation(rigidbody.rotation * deltaRotation);
+            //Quaternion deltaRotation = Quaternion.Euler(rotVec * turningSpeed * Time.deltaTime);
+            //rigidbody.MoveRotation(rigidbody.rotation * deltaRotation);
         }
         else
         {

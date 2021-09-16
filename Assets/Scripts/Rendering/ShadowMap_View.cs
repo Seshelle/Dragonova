@@ -4,14 +4,14 @@ using UnityEngine.Rendering;
 [RequireComponent(typeof(Camera))]
 public class ShadowMap_View : MonoBehaviour
 {
-    public Camera cam;
+    //public Camera cam;
     public Light m_Light;
-    RenderTexture m_ShadowmapCopy;
+    public RenderTexture m_ShadowmapCopy;
 
     void Start()
     {
         RenderTargetIdentifier shadowmap = BuiltinRenderTextureType.CurrentActive;
-        m_ShadowmapCopy = new RenderTexture(1024, 1024, 0);
+        //m_ShadowmapCopy = new RenderTexture(2048, 2048, 0);
         CommandBuffer cb = new CommandBuffer();
 
         // Change shadow sampling mode for m_Light's shadowmap.
@@ -28,9 +28,6 @@ public class ShadowMap_View : MonoBehaviour
 
     void OnRenderImage(RenderTexture src, RenderTexture dest)
     {
-        // Display the shadowmap in the corner.
-        //cam.rect = new Rect(0, 0, 0.5f, 0.5f);
         Graphics.Blit(m_ShadowmapCopy, dest);
-        //cam.rect = new Rect(0, 0, 1f, 1f);
     }
 }

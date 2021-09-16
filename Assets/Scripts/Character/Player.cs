@@ -217,7 +217,7 @@ public class Player : Combat_Entity
                 //grappling = false;
                 rigidbody.velocity = desiredVelocity * walkSpeed;
                 //rigidbody.AddForce(desiredVelocity * walkSpeed, ForceMode.Acceleration);
-                if (!transform.parent) transform.parent = closest.transform;
+                //if (!transform.parent) transform.parent = closest.transform;
             }
             else
             {

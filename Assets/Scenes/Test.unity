@@ -288,9 +288,10 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 476465941}
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -22188.723, y: 2145.032, z: 2293.8965}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
+  m_Children:
+  - {fileID: 1659485520}
   m_Father: {fileID: 0}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
@@ -477,11 +478,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad8874eea6d8d9a4ea4e61196995f6ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 50
   slowSpeed: 50
-  fastSpeed: 100
-  maxSpeed: 200
-  deceleration: 50
+  boostSpeed: 75
+  maxSpeed: 500
+  deceleration: 25
   boostCooldown: 1
   turningSpeed: 50
   followAltitude: 200
@@ -657,10 +657,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7786f2cf8b127244b0edf0d960c9377, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  textureSize: 2048
-  scale: 3
-  rotationSpeed: 0.05
-  tree: {fileID: 188006, guid: c6b7fb383a3534b039692b5485b6e739, type: 3}
+  textureSize: 1024
+  scale: 1.5
+  blur: 1
+  tree: {fileID: 100000, guid: 41dbe63909c99254baa0c6323eb510a1, type: 3}
 --- !u!23 &824783975
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -932,8 +932,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6aa0a8562f818d3449459f0e96066304, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cam: {fileID: 1659485519}
   m_Light: {fileID: 476465942}
+  m_ShadowmapCopy: {fileID: 8400000, guid: 1e5857a51d23afe42ba27a5e7d23b720, type: 2}
 --- !u!20 &1659485519
 Camera:
   m_ObjectHideFlags: 0
@@ -958,7 +958,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 10000
+  far clip plane: 100000
   field of view: 50
   orthographic: 0
   orthographic size: 5
@@ -984,12 +984,12 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1659485516}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
-  m_Father: {fileID: 1791233579}
-  m_RootOrder: 2
+  m_Father: {fileID: 476465943}
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1791233578
 GameObject:
@@ -1003,6 +1003,7 @@ GameObject:
   - component: {fileID: 1791233581}
   - component: {fileID: 1791233580}
   - component: {fileID: 1791233582}
+  - component: {fileID: 1791233583}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1023,7 +1024,6 @@ Transform:
   m_Children:
   - {fileID: 638658408}
   - {fileID: 1938617954}
-  - {fileID: 1659485520}
   m_Father: {fileID: 543070294}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1087,6 +1087,20 @@ Skybox:
   m_GameObject: {fileID: 1791233578}
   m_Enabled: 1
   m_CustomSkybox: {fileID: 2100000, guid: 14117c1236bf1984b90afa515832e648, type: 2}
+--- !u!114 &1791233583
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1791233578}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6aa0a8562f818d3449459f0e96066304, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Light: {fileID: 476465942}
+  m_ShadowmapCopy: {fileID: 8400000, guid: 1e5857a51d23afe42ba27a5e7d23b720, type: 2}
 --- !u!1 &1818512118
 GameObject:
   m_ObjectHideFlags: 0
