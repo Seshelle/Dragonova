@@ -9,8 +9,8 @@ public class Strat_Map_Display : MonoBehaviour
     public GameObject mapCamera;
 
     // Update is called once per frame
-    void Update()
-    {
+    //void Update()
+    //{
         
-    }
+    //}
 }

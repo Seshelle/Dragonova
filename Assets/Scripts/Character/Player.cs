@@ -11,12 +11,15 @@ public class Player : Combat_Entity
     public float sprintSpeedMod = 2;
     public float jumpSpeed = 4000;
     public float jumpForce = 10;
+    public float jetForce = 20;
     public float gravForce = 30;
     public float height = 1;
     public Projectile projectile;
     //public float fireRate = 0.1f;
     public Grappling_Hook grapple;
-    public GameObject structure;
+    public GameObject[] structures;
+
+    int structureIndex = 0;
 
     bool mounted = true;
     float regen = 5;
@@ -28,14 +31,13 @@ public class Player : Combat_Entity
 
     bool jumpingUp = false;
     bool grounded = false;
-    float snaprange = 0.5f;
+    float snaprange = 0.25f;
     bool grappling = false;
 
     Vector3 prevPos;
     Vector3 momentum;
 
     GameObject heldItem;
-    bool holdingItem = false;
 
     private void Awake()
     {
@@ -46,6 +48,7 @@ public class Player : Combat_Entity
     protected override void Start()
     {
         base.Start();
+        team = 0;
         fireRate = projectile.fireRate;
         prevPos = transform.position;
         camera = GameObject.FindGameObjectWithTag("MainCamera");
@@ -59,7 +62,7 @@ public class Player : Combat_Entity
         health += regen * Time.deltaTime;
         if (health > Maxhealth) health = Maxhealth;
 
-        if (!Manager.gamePaused)
+        if (!Planet_Manager.gamePaused)
         {
             //reduce sensitivity when looking at extreme up or down angle
             float difference = 20;
@@ -110,39 +113,57 @@ public class Player : Combat_Entity
             }
 
             //grapple
-            if (!mounted && grapple.resting && Input.GetButtonDown("Grapple"))
+            if (Input.GetButtonDown("Grapple"))
             {
-                grapple.SetResting(true);
-                Vector3 spawnPoint = transform.position + camera.transform.forward * 2 + camera.transform.right * 0.5f - camera.transform.up * 0.3f;
-                grapple.transform.position = spawnPoint;
-                grapple.transform.rotation = camera.transform.rotation;
-                grapple.SetProperties(GetMomentum(), team);
-                grapple.StartGrapple();
+                if (!mounted && !grappling && grapple.resting)
+                {
+                    grapple.SetResting(true);
+                    Vector3 spawnPoint = transform.position + camera.transform.forward * 2 + camera.transform.right * 0.5f - camera.transform.up * 0.3f;
+                    grapple.transform.position = spawnPoint;
+                    grapple.transform.rotation = camera.transform.rotation;
+                    grapple.SetProperties(GetMomentum(), team);
+                    grapple.StartGrapple();
+                }
+                else
+                {
+                    grapple.SetResting(true);
+                    grappling = false;
+                }
             }
 
             //interact
             if (Input.GetButtonDown("Interact"))
             {
-                if (Vector3.Distance(transform.position, dragon.transform.position) < 40)
-                {
+                //if (Vector3.Distance(transform.position, dragon.transform.position) < 40)
+                //{
                     SetMounted(true);
-                }
+                //}
+            }
+
+            if (Input.GetAxis("MouseScroll") != 0)
+            {
+                if (Input.GetAxis("MouseScroll") > 0) structureIndex += 1;
+                else structureIndex -= 1;
+
+                if (structureIndex < 0) structureIndex = structures.Length - 1;
+                if (structureIndex >= structures.Length) structureIndex = 0;
+
+                if (heldItem) GameObject.Destroy(heldItem);
             }
 
             //build
             if (Input.GetButtonDown("Cycle"))
             {
-                if (!holdingItem)
+                if (!heldItem)
                 {
-                    holdingItem = true;
-                    GameObject block = GameObject.Instantiate(structure, camera.transform);
+                    GameObject block = GameObject.Instantiate(structures[structureIndex], camera.transform);
                     block.transform.localPosition = Vector3.forward * 5;
                     heldItem = block;
                 }
                 else
                 {
-                    holdingItem = false;
-                    heldItem.transform.parent = manager.GetClosestPlanet(transform.position).transform;
+                    //heldItem.transform.parent = manager.GetClosestPlanet(transform.position).transform;
+                    if (heldItem.GetComponent<Structure>().Place()) heldItem = null;
                 }
             }
         }
@@ -163,11 +184,22 @@ public class Player : Combat_Entity
             //correct rotation by rotating transform to planet surface
             Quaternion correction = Quaternion.FromToRotation(-transform.up, gravity);
             transform.Rotate(correction.eulerAngles, Space.World);
-            //rigidbody.MoveRotation(correction);
 
-            //float height = closest.GetPlanetHeight(-direction);
             float elevation = closest.GetPlanetHeight(-direction, height);
             float aboveSurface = Vector3.Magnitude(direction) - elevation;
+
+            //fire downward raycast to check for solid geometry
+            RaycastHit hit;
+            bool doSnap = true;
+            if (Physics.Raycast(transform.position + transform.TransformDirection(Vector3.down), transform.TransformDirection(Vector3.down), out hit, 1))
+            {
+                float rayDist = hit.distance;
+                if (rayDist < aboveSurface)
+                {
+                    aboveSurface = rayDist;
+                    doSnap = false;
+                }
+            }
 
             if (aboveSurface - snaprange > 0)
             {
@@ -179,13 +211,13 @@ public class Player : Combat_Entity
                     jumpingUp = false;
                 }
             }
-            else if (aboveSurface < snaprange && aboveSurface > 0)
+            else if (aboveSurface < snaprange && aboveSurface >= 0)
             {
                 //if player is very close to surface, snap them to surface.
-                //disable snapping while jumping upwards
+                //disable snapping while jumping upwards or on a real collider
                 if (!jumpingUp && !grappling)
                 {
-                    transform.Translate(aboveSurface * gravity, Space.World);
+                    if (doSnap) transform.Translate(aboveSurface * gravity, Space.World);
                     grounded = true;
                 }
             }
@@ -201,14 +233,7 @@ public class Player : Combat_Entity
             Vector3 moveDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0, 0);
             moveDir = camera.transform.TransformDirection(moveDir).normalized;
             Vector3 trueForward = Vector3.ProjectOnPlane(camera.transform.forward, transform.up);
-            if (grappling)
-            {
-                moveDir += (Input.GetAxisRaw("Vertical") * transform.up).normalized;
-            }
-            else
-            {
-                moveDir += (Input.GetAxisRaw("Vertical") * trueForward).normalized;
-            }
+            moveDir += (Input.GetAxisRaw("Vertical") * trueForward).normalized;
             float speedMod = 1;
             if (Input.GetButton("Sprint")) speedMod = sprintSpeedMod;
             Vector3 desiredVelocity = moveDir.normalized * speedMod;
@@ -217,7 +242,7 @@ public class Player : Combat_Entity
                 //grappling = false;
                 rigidbody.velocity = desiredVelocity * walkSpeed;
                 //rigidbody.AddForce(desiredVelocity * walkSpeed, ForceMode.Acceleration);
-                //if (!transform.parent) transform.parent = closest.transform;
+                if (!transform.parent) transform.parent = closest.transform;
             }
             else
             {
@@ -227,12 +252,13 @@ public class Player : Combat_Entity
             }
 
             //player can jump if grounded
-            if (((grounded && !jumpingUp) || grappling)  && Input.GetButton("Jump"))
+            if (Input.GetButton("Jump"))
             {
-                if (!grappling) rigidbody.AddForce(-gravity * jumpForce, ForceMode.VelocityChange);
+                if (grounded) rigidbody.AddForce(-gravity * jumpForce, ForceMode.VelocityChange);
+                else rigidbody.AddForce(-gravity * jetForce, ForceMode.Acceleration);
                 jumpingUp = true;
                 grounded = false;
-                grappling = false;
+                //grappling = false;
             }
 
         }

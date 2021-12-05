@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class Strat_Map_Control : MonoBehaviour
 {
@@ -9,6 +10,8 @@ public class Strat_Map_Control : MonoBehaviour
     public float maxCameraSize;
     public float minCameraSize;
     public Star_Icon star;
+    public Text loadingText;
+    public Text coordinateText;
 
     Camera camera;
     int cameraHeight;
@@ -17,9 +20,11 @@ public class Strat_Map_Control : MonoBehaviour
     int prevX = 0;
     int prevY = 0;
     Level_Data level;
+    List<(int x, int y)> discoveredStars = new List<(int x, int y)>();
 
     private void Start()
     {
+        discoveredStars.Add((0, 0));
         camera = GetComponent<Camera>();
         cameraHeight = Mathf.RoundToInt(camera.orthographicSize) + 2;
         cameraWidth = Mathf.RoundToInt(camera.orthographicSize * Screen.width / Screen.height) + 2;
@@ -29,19 +34,18 @@ public class Strat_Map_Control : MonoBehaviour
             for(int y = 0; y < cameraHeight * 2; y++)
             {
                 stars[x, y] = GameObject.Instantiate(star.gameObject).GetComponent<Star_Icon>();
-                stars[x, y].Init(cameraWidth, cameraHeight, x - cameraWidth, y - cameraHeight);
+                stars[x, y].Init(cameraWidth, cameraHeight, x - cameraWidth, y - cameraHeight, this);
             }
         }
 
         level = GameObject.FindGameObjectWithTag("LevelData").GetComponent<Level_Data>();
-
-        //force the map to update by changing prevX
-        prevX = Mathf.RoundToInt(transform.position.x) + 1;
+        CheckMapUpdate(true);
     }
 
     private void Update()
     {
         float speed = Time.deltaTime * scrollSpeed;
+        if (Input.GetButton("Sprint")) speed *= 2;
         float horizontal = Input.GetAxisRaw("Horizontal") * speed;
         float vertical = Input.GetAxisRaw("Vertical") * speed;
         transform.Translate(horizontal, vertical, 0);
@@ -56,19 +60,22 @@ public class Strat_Map_Control : MonoBehaviour
             camera.orthographicSize = minCameraSize;
         }
 
-        if (Input.GetMouseButtonDown(0))
-        {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit2D hit = Physics2D.GetRayIntersection(ray, 10);
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit2D hit = Physics2D.GetRayIntersection(ray, 10);
 
-            if (hit.collider)
+        if (hit.collider)
+        {
+            Star_Icon starHit = hit.collider.gameObject.GetComponent<Star_Icon>();
+            if (starHit)
             {
-                Star_Icon starHit = hit.collider.gameObject.GetComponent<Star_Icon>();
-                if (starHit)
+                (int x, int y) coord = starHit.GetGridPosition();
+                coordinateText.text = $"{coord.x}, {coord.y}";
+                if (Input.GetMouseButtonDown(0))
                 {
-                    level.SetPosition(starHit.GetGridPosition());
+                    discoveredStars.Add(coord);
+                    level.SetPosition(coord);
                     level.SetSeed(starHit.GetSeed());
-                    //print(starPos[0] + ", " + starPos[1]);
+                    loadingText.enabled = true;
                     SceneManager.LoadScene("Test");
                 }
             }
@@ -77,9 +84,25 @@ public class Strat_Map_Control : MonoBehaviour
 
     private void FixedUpdate()
     {
+        CheckMapUpdate();
+    }
+
+    private void CheckMapUpdate()
+    {
+        CheckMapUpdate(false);
+    }
+
+    private void CheckMapUpdate(bool forceUpdate)
+    {
         //put a star in each visible position
         int cameraX = Mathf.RoundToInt(transform.position.x);
         int cameraY = Mathf.RoundToInt(transform.position.y);
+
+        if (forceUpdate)
+        {
+            cameraX += 999999;
+            cameraY += 999999;
+        }
 
         if (cameraX != prevX || cameraY != prevY)
         {
@@ -92,10 +115,14 @@ public class Strat_Map_Control : MonoBehaviour
             {
                 for (int y = 0; y < cameraHeight * 2; y++)
                 {
-                    //stars[x, y].UpdateConnections(x + startX, y + startY);
                     stars[x, y].CameraChange(cameraX, cameraY);
                 }
             }
         }
+    }
+
+    public bool IsDiscovered((int x, int y) pos)
+    {
+        return discoveredStars.Contains(pos);
     }
 }

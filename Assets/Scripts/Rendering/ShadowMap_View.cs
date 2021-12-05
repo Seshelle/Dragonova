@@ -11,7 +11,6 @@ public class ShadowMap_View : MonoBehaviour
     void Start()
     {
         RenderTargetIdentifier shadowmap = BuiltinRenderTextureType.CurrentActive;
-        //m_ShadowmapCopy = new RenderTexture(2048, 2048, 0);
         CommandBuffer cb = new CommandBuffer();
 
         // Change shadow sampling mode for m_Light's shadowmap.

@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Planet
   - LevelData
+  - Dragon
   layers:
   - Default
   - TransparentFX
@@ -14,8 +15,8 @@ TagManager:
   - Water
   - UI
   - Planet
-  - 
-  - 
+  - Projectile
+  - Dragon
   - 
   - 
   - 

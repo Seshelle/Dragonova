@@ -31,7 +31,7 @@ Transform:
   m_GameObject: {fileID: 3052694664571235552}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.25, y: 0.25, z: 0.25}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -98,7 +98,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f39ae7235f75d364b8d7f584089cab5a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 200
+  speed: 100
   hitScan: 0
   damage: 40
   lifetime: 2
@@ -107,7 +107,7 @@ MonoBehaviour:
   resting: 1
   aftermath: {fileID: 0}
   team: 0
-  force: 50
+  force: 25
   player: {fileID: 0}
 --- !u!136 &449786557725203767
 CapsuleCollider:
@@ -117,7 +117,7 @@ CapsuleCollider:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3052694664571235552}
   m_Material: {fileID: 0}
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_Enabled: 1
   m_Radius: 0.5
   m_Height: 6
@@ -174,8 +174,8 @@ LineRenderer:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
-        time: 0.16118784
-        value: 0.054056287
+        time: 0
+        value: 0.05
         inSlope: 0
         outSlope: 0
         tangentMode: 0

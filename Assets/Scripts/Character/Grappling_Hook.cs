@@ -90,12 +90,12 @@ public class Grappling_Hook : Projectile
         transform.parent = manager.GetClosestPlanet(transform.position).transform;
     }
 
-    protected override void OnTriggerEnter(Collider other)
+    protected override void OnCollisionEnter(Collision collision)
     {
-        if (!other.isTrigger && !other.gameObject.CompareTag("Player"))
+        if (!collision.gameObject.CompareTag("Player"))
         {
             SetGrapple(true);
-            transform.parent = other.transform;
+            transform.parent = collision.transform;
         }
     }
 }

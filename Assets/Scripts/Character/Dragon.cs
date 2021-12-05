@@ -6,26 +6,26 @@ public class Dragon : MonoBehaviour
 {
     public float slowSpeed = 50;
     public float boostSpeed = 100;
+    public float maxBoostTime = 2;
     public float maxSpeed = 200;
     public float deceleration = 20;
-    public float boostCooldown = 2;
     public float turningSpeed = 1.0f;
     public float followAltitude = 50;
-    public CapsuleCollider collider;
 
     Player player;
-    Manager manager;
+    Planet_Manager manager;
     Rigidbody rigidbody;
-    float moveSpeed = 50;
+    float moveSpeed = 5;
     Vector3 rotVec;
+    Vector3 moveDirection = Vector3.zero;
     bool isMounted = true;
-    float timeSinceBoost = 1000;
+    float timeSinceBoost = 0;
 
     private void Start()
     {
         rigidbody = GetComponent<Rigidbody>();
         player = GameObject.FindGameObjectWithTag("Player").GetComponent<Player>();
-        manager = GameObject.FindGameObjectWithTag("GameController").GetComponent<Manager>();
+        manager = GameObject.FindGameObjectWithTag("GameController").GetComponent<Planet_Manager>();
     }
 
     // Update is called once per frame
@@ -33,32 +33,43 @@ public class Dragon : MonoBehaviour
     {
         if (isMounted)
         {
-            //speed decays toward default speed naturally
-            if (moveSpeed > slowSpeed)
+            float driftTurn = 2;
+            float decelerateAmount = deceleration;
+            if (Input.GetButton("Sprint"))
             {
-                moveSpeed -= Time.deltaTime * deceleration;
+                //charge up a boost
+                timeSinceBoost += Time.deltaTime;
+                decelerateAmount *= 2;
+                moveDirection = Vector3.RotateTowards(moveDirection, transform.forward, Time.deltaTime / 4, 0);
+                if (timeSinceBoost > maxBoostTime) timeSinceBoost = maxBoostTime;
             }
-
-            if (Input.GetButton("Grapple"))
+            else
             {
-                moveSpeed -= Time.deltaTime * deceleration * 3;
-            }
-
-            timeSinceBoost += Time.deltaTime;
-            if (timeSinceBoost >= boostCooldown && Input.GetButton("Sprint"))
-            {
-                //boost forward
+                moveDirection = transform.forward;
+                driftTurn = 1;
+                moveSpeed += timeSinceBoost * (boostSpeed / maxBoostTime);
                 timeSinceBoost = 0;
-                moveSpeed += boostSpeed;
             }
 
             if (moveSpeed > maxSpeed) moveSpeed = maxSpeed;
             if (moveSpeed < 0) moveSpeed = 0;
 
+            //speed decays toward default speed naturally
+            if (moveSpeed > slowSpeed) moveSpeed -= Time.deltaTime * decelerateAmount;
+
+            if (Input.GetButton("Grapple"))
+            {
+                moveSpeed -= Time.deltaTime * decelerateAmount * 4;
+            }
+
             //turn with wasd
             rotVec = new Vector3(Input.GetAxis("Vertical"), Input.GetAxis("Horizontal"), Input.GetAxis("Roll"));
-            Quaternion deltaRotation = Quaternion.Euler(rotVec * turningSpeed * Time.deltaTime);
+            Quaternion deltaRotation = Quaternion.Euler(rotVec * turningSpeed * driftTurn * Time.deltaTime);
             rigidbody.MoveRotation(rigidbody.rotation * deltaRotation);
+        }
+        else
+        {
+            moveDirection = transform.forward;
         }
     }
 
@@ -100,8 +111,7 @@ public class Dragon : MonoBehaviour
         }
         else
         {
-            //transform.Translate(transform.forward * movementSpeed * Time.deltaTime * moveMultiplier, Space.World);
-            rigidbody.MovePosition(rigidbody.position + transform.forward * moveSpeed * Time.deltaTime);
+            rigidbody.MovePosition(rigidbody.position + moveDirection * moveSpeed * Time.deltaTime);
         }
     }
 
@@ -113,6 +123,5 @@ public class Dragon : MonoBehaviour
     public void SetMounted(bool state)
     {
         isMounted = state;
-        collider.enabled = !isMounted;
     }
 }

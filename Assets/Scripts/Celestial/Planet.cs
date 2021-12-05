@@ -13,12 +13,16 @@ public class Planet : MonoBehaviour
     public float scale = 1.0F;
     public bool blur = true;
 
-    //public float rotationSpeed = 0.005f;
+    public float rotationSpeed;
 
     float xOrg = 0;
     float yOrg = 0;
 
-    public GameObject tree;
+    public Material[] planetTypes;
+    public GameObject[] environment;
+    public GameObject asteroid;
+    public GameObject powerSource;
+    public Shadow_Cam shadowWrap;
 
 #if UNITY_EDITOR
     [CustomEditor(typeof(Planet))]
@@ -47,6 +51,9 @@ public class Planet : MonoBehaviour
 
     void Start()
     {
+        //choose a planet type to generate
+        GetComponent<Renderer>().material = planetTypes[Mathf.FloorToInt(Random.value * planetTypes.Length)];
+
         //get level data to generate
         Level_Data levelData = GameObject.FindGameObjectWithTag("LevelData").GetComponent<Level_Data>();
         CalcNoise(levelData.GetPlanetSeed());
@@ -58,34 +65,13 @@ public class Planet : MonoBehaviour
         seaLevel = mat.GetFloat("_SeaLevel");
         worldSeaLevel = (radius + seaLevel) * transform.localScale.x;
 
-        AddFoliage(levelData.GetPlanetSeed());
+        AddObjects(levelData.GetPlanetSeed());
     }
 
-    /*float terrain(float2 p)
-    {
-        const float2x2 m2 = float2x2(0.80, 0.60, -0.60, 0.80);
-        p *= 0.0045;
-        float f = 2.;
-        float s = 0.5;
-        float a = 0.0;
-        float b = 0.5;
-        for (int i = 0; i < 9; i++)
-        {
-            float n = noise(p);
-            a += b * n;
-            b *= s;
-            p = mul(p, m2) * f;
-        }
-
-        a = smoothstep(-0.5, 0.7, a);
-
-        return a;
-    }*/
-
-    /*private void FixedUpdate()
+    private void FixedUpdate()
     {
         transform.Rotate(Vector3.up * Time.deltaTime * rotationSpeed);
-    }*/
+    }
 
     float FractalNoise(float x, float y)
     {
@@ -159,20 +145,39 @@ public class Planet : MonoBehaviour
     void ApplyToSharedMaterial()
     {
         mat.SetTexture("_MainTex", heightMap);
+        shadowWrap.SetTextures(heightMap, rotationSpeed);
     }
 
-    void AddFoliage(int seed)
+    void AddObjects(int seed)
     {
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < 1000; i++)
         {
             Vector3 treePos = new Vector3(Random.value * 2 - 1, Random.value * 2 - 1, Random.value * 2 - 1).normalized;
             float altitude = GetPlanetHeight(treePos, 0);
             if (altitude > worldSeaLevel)
             {
                 Quaternion treeRot = Quaternion.LookRotation(-treePos) * Quaternion.Euler(-90, 0, 0);
-                GameObject.Instantiate(tree, treePos * altitude, treeRot);
+                GameObject foliage = GameObject.Instantiate(environment[Mathf.FloorToInt(Random.value * environment.Length)], treePos * altitude, treeRot);
+                foliage.transform.parent = transform;
             }
         }
+
+        for (int i = 0; i < 100; i++)
+        {
+            Vector3 asteroidPos = new Vector3(Random.value * 2 - 1, Random.value * 0.2f - 0.1f, Random.value * 2 - 1).normalized;
+            float altitude = Random.value * 5000 + 8000;
+            if (altitude > worldSeaLevel)
+            {
+                GameObject foliage = GameObject.Instantiate(asteroid, asteroidPos * altitude, Quaternion.identity);
+            }
+        }
+
+        Vector3 powerPos = new Vector3(Random.value * 2 - 1, Random.value * 0.2f - 0.1f, Random.value * 2 - 1).normalized;
+        powerPos *= GetPlanetHeight(powerPos, 0);
+        Quaternion powerRot = Quaternion.LookRotation(powerPos) * Quaternion.Euler(0, 0, 0);
+        GameObject power = GameObject.Instantiate(powerSource, powerPos, powerRot);
+        power.transform.parent = transform;
+        power.transform.localScale = Vector3.one * 100;
     }
 
     public bool IsInPlanet(Vector3 pos)
@@ -196,11 +201,11 @@ public class Planet : MonoBehaviour
         }
         else if (pAbs.y >= pAbs.x)
         {
-            return p.z < 0 ? CubemapFace.NegativeY : CubemapFace.PositiveY;
+            return p.y < 0 ? CubemapFace.NegativeY : CubemapFace.PositiveY;
         }
         else
         {
-            return p.z < 0 ? CubemapFace.NegativeX : CubemapFace.PositiveX;
+            return p.x < 0 ? CubemapFace.NegativeX : CubemapFace.PositiveX;
         }
     }
 
@@ -232,60 +237,16 @@ public class Planet : MonoBehaviour
 
     public float GetPlanetHeight(Vector3 p, float size)
     {
-        /*position = Quaternion.AngleAxis(-transform.rotation.eulerAngles.y, Vector3.up) * position;
-        Vector2 uv = getSphereUV(position);
-
-        float adjustX = 0.5f / textureSize;
-        float adjustY = 0.5f / textureSize;
-        Color col = noiseTex.GetPixelBilinear(uv.x - adjustX, uv.y - adjustY);
-
-        float blend = Mathf.Max(Mathf.Abs(uv.x - 0.5f), Mathf.Abs(uv.y - 0.5f));
-        if (blend > 0)
-        {
-            Vector2 difUV = difSphereUV(position);
-            Color adj = noiseTex.GetPixelBilinear(difUV.x - adjustX, difUV.y - adjustY);
-            adj = new Color(adj.r, col.g, 0);
-            col = Color.Lerp(col, adj, blend * 2);
-        }
-        float height = radius - (col.r + col.g) * mainScale;
-        return height * transform.localScale.x + size;*/
-
-        /*float2 sampleCube(
-            const float3 v,
-            out float faceIndex)
-        {
-            float3 vAbs = abs(v);
-            float ma;
-            float2 uv;
-            if (vAbs.z >= vAbs.x && vAbs.z >= vAbs.y)
-            {
-                faceIndex = v.z < 0.0 ? 5.0 : 4.0;
-                ma = 0.5 / vAbs.z;
-                uv = float2(v.z < 0.0 ? -v.x : v.x, -v.y);
-            }
-            else if (vAbs.y >= vAbs.x)
-            {
-                faceIndex = v.y < 0.0 ? 3.0 : 2.0;
-                ma = 0.5 / vAbs.y;
-                uv = float2(v.x, v.y < 0.0 ? -v.z : v.z);
-            }
-            else
-            {
-                faceIndex = v.x < 0.0 ? 1.0 : 0.0;
-                ma = 0.5 / vAbs.x;
-                uv = float2(v.x < 0.0 ? v.z : -v.z, -v.y);
-            }
-            return uv * ma + 0.5;
-        }*/
-
+        p = Quaternion.AngleAxis(-transform.rotation.eulerAngles.y, Vector3.up) * p;
         Vector2 uv = GetSurfaceUV(p);
         CubemapFace face = GetSurfaceFace(p);
-        int pixelX = Mathf.RoundToInt(uv.x * heightMap.width);
-        int pixelY = Mathf.RoundToInt(uv.y * heightMap.height);
+        //int pixelX = Mathf.RoundToInt(uv.x * heightMap.width);
+        //int pixelY = Mathf.RoundToInt(uv.y * heightMap.height);
 
         //float height = heightMap.GetPixel(face, pixelX, pixelY).r;
         float adjust = 0.5f / textureSize;
-        float height = planetFaces[face].GetPixelBilinear(uv.x - adjust, uv.y - adjust).r;
+        Color data = planetFaces[face].GetPixelBilinear(uv.x - adjust, uv.y - adjust);
+        float height = data.r + data.g;
         height = radius - height * mainScale;
         return height * transform.localScale.x + size;
     }
@@ -316,7 +277,7 @@ public class Planet : MonoBehaviour
         return position.normalized * GetPlanetHeight(position);
     }
 
-    public void Terraform(Vector3 position, int radius, float amount)
+    public void Terraform(Vector3 p, int radius, float amount)
     {
         /*position = Quaternion.AngleAxis(-transform.rotation.eulerAngles.y, Vector3.up) * position;
         Color elevationChange = new Color(0, amount, 0);
@@ -337,5 +298,21 @@ public class Planet : MonoBehaviour
         }
         noiseTex.Apply(false);
         ApplyToSharedMaterial();*/
+
+        p = Quaternion.AngleAxis(-transform.rotation.eulerAngles.y, Vector3.up) * p;
+        Vector2 uv = GetSurfaceUV(p);
+        CubemapFace face = GetSurfaceFace(p);
+        float adjust = 0.5f / textureSize;
+        int pixelX = Mathf.RoundToInt((uv.x - adjust) * heightMap.width);
+        int pixelY = Mathf.RoundToInt((uv.y - adjust) * heightMap.height);
+        Color oldData = planetFaces[face].GetPixel(pixelX, pixelY);
+        Color newData = new Color(oldData.r, oldData.g + amount, 1);
+        planetFaces[face].SetPixel(pixelX, pixelY, newData);
+
+        heightMap.SetPixels(planetFaces[face].GetPixels(), face);
+        heightMap.SetPixel(face, pixelX, pixelY, newData);
+        heightMap.Apply(false);
+        if (!mat) mat = GetComponent<Renderer>().material;
+        ApplyToSharedMaterial();
     }
 }

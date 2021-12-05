@@ -20,12 +20,12 @@ public class Projectile : MonoBehaviour
     protected float activeTime = 0;
     public int team = 0;
 
-    protected Manager manager;
+    protected Planet_Manager manager;
 
     virtual protected void Awake()
     {
         rigidbody = GetComponent<Rigidbody>();
-        manager = GameObject.FindGameObjectWithTag("GameController").GetComponent<Manager>();
+        manager = GameObject.FindGameObjectWithTag("GameController").GetComponent<Planet_Manager>();
     }
 
     // Update is called once per frame
@@ -55,6 +55,7 @@ public class Projectile : MonoBehaviour
         Planet close = manager.GetClosestPlanet(transform.position);
         close.Terraform(transform.position, 0, terrainDamage);
         transform.position = close.ClosestContact(transform.position);
+        CreateAftermath(close.transform);
         SetResting(true);
     }
 
@@ -63,8 +64,16 @@ public class Projectile : MonoBehaviour
         resting = state;
         if (resting)
         {
-            if (aftermath) GameObject.Instantiate(aftermath, transform.position, transform.rotation);
             GameObject.Destroy(gameObject);
+        }
+    }
+
+    virtual protected void CreateAftermath(Transform surface)
+    {
+        if (aftermath)
+        {
+            GameObject effect = GameObject.Instantiate(aftermath, transform.position, transform.rotation);
+            effect.transform.parent = surface;
         }
     }
 
@@ -73,21 +82,21 @@ public class Projectile : MonoBehaviour
         return speed * lifetime;
     }
 
-    virtual protected void OnTriggerEnter(Collider other)
+    virtual protected void OnCollisionEnter(Collision collision)
     {
         if (!resting)
         {
             //if collision is with an enemy, tell it about the hit
-            Entity entity = other.gameObject.GetComponent<Entity>();
+            Entity entity = collision.gameObject.GetComponent<Entity>();
             if (!entity)
             {
-                transform.position = other.ClosestPoint(transform.position);
+                CreateAftermath(collision.gameObject.transform);
                 SetResting(true);
             }
             else if (entity.team != team)
             {
-                transform.position = other.ClosestPoint(transform.position);
                 entity.Attack(team, damage, transform.position);
+                CreateAftermath(collision.gameObject.transform);
                 SetResting(true);
             }
         }

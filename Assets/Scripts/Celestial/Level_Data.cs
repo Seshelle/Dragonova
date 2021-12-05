@@ -7,7 +7,7 @@ public class Level_Data : MonoBehaviour
     bool initialized = false;
 
     int seed = 0;
-    int[] position = { 0, 0 };
+    (int x, int y) position = (0, 0);
 
     void Awake()
     {
@@ -30,7 +30,7 @@ public class Level_Data : MonoBehaviour
         seed = newSeed;
     }
 
-    public void SetPosition(int[] pos)
+    public void SetPosition((int x, int y) pos)
     {
         position = pos;
     }

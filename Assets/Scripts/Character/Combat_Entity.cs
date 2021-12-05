@@ -4,12 +4,12 @@ using UnityEngine;
 
 public class Combat_Entity : Entity
 {
-    protected Manager manager;
+    protected Planet_Manager manager;
 
     protected override void Start()
     {
         base.Start();
-        manager = GameObject.FindGameObjectWithTag("GameController").GetComponent<Manager>();
+        manager = GameObject.FindGameObjectWithTag("GameController").GetComponent<Planet_Manager>();
         manager.AddToTargetList(gameObject);
     }
 
