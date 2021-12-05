@@ -3,6 +3,7 @@ Shader "Unlit/Starfield_Shader"
 	Properties{
 		//_Cube("Environment Map", Cube) = "white" {}
 		_AtmoRad("Atmosphere Radius", float) = 10000
+		_SunColor("Sun Color", Color) = (1, 1, 1, 1)
 	}
 
 	SubShader{
@@ -17,10 +18,13 @@ Shader "Unlit/Starfield_Shader"
 			#pragma fragment frag
 
 			#define PI 3.1415926535
-			#define STAR_DENSITY 1000
+			#define BANDS 500
+			#define STAR_NUM 5
+			#define STAR_MAX_SIZE 0.000002
 
 			//samplerCUBE _Cube;
 			float _AtmoRad;
+			half4 _SunColor;
 
 			struct vertexInput {
 				float4 vertex : POSITION;
@@ -52,7 +56,7 @@ Shader "Unlit/Starfield_Shader"
 			}
 
 			float brightness(float3 rd, float3 ld, float intensity) {
-				return intensity / (1 - dot(rd, normalize(ld)));
+				return saturate(intensity / (1 - dot(rd, normalize(ld))));
 			}
 
 			bool sphereHit(float3 ro, float3 rd, float r) {
@@ -67,14 +71,8 @@ Shader "Unlit/Starfield_Shader"
 				float negate = float(x < 0);
 				x = abs(x);
 				float ret = -0.0187293;
-				//ret = ret * x;
-				//ret = ret + 0.0742610;
 				ret = mad(x, ret, 0.0742610);
-				//ret = ret * x;
-				//ret = ret - 0.2121144;
 				ret = mad(x, ret, -0.2121144);
-				//ret = ret * x;
-				//ret = ret + 1.5707288;
 				ret = mad(x, ret, 1.5707288);
 				ret = ret * sqrt(1.0 - x);
 				ret = ret - 2 * negate * ret;
@@ -84,9 +82,9 @@ Shader "Unlit/Starfield_Shader"
 			fixed4 getStars(float3 rd) {
 				float rayTheta = facos(rd.z);
 
-				float width = PI / STAR_DENSITY;
+				float width = PI / BANDS;
 
-				float rayLevel = floor((rayTheta / PI) * STAR_DENSITY);
+				float rayLevel = floor((rayTheta / PI) * BANDS);
 
 				float theta;
 				float phi;
@@ -95,9 +93,9 @@ Shader "Unlit/Starfield_Shader"
 				float level;
 				float3 rand;
 
-				for (float i = -5; i <= 5; i++) {
+				for (float i = -3; i <= 3; i++) {
 
-					level = min(STAR_DENSITY - 1, max(0, rayLevel + i));
+					level = min(BANDS, max(0, rayLevel + i));
 					theta = (level + 0.5) * width;
 
 					//remove stars at random near the poles to prevent bunching
@@ -106,16 +104,28 @@ Shader "Unlit/Starfield_Shader"
 						continue;
 					}
 
-					rand = randomf3(level + theta);
-					phi = 2 * PI * rand.x;
-					float3 starPos = normalize(float3(sin(theta)*cos(phi),
-						sin(theta)*sin(phi),
-						cos(theta)));
+					for (float j = 0; j < STAR_NUM; j++) {
+						rand = randomf3(level + theta + j * 1000);
+						phi = 2 * PI * rand.x;
+						const float3 starPos = normalize(float3(sin(theta)*cos(phi),
+							sin(theta)*sin(phi),
+							cos(theta)));
 
-					const float starDist = 1 - (0.5 + 0.5 * dot(starPos, rd));
-					const float intensity = 0.000001 * (0.1 + sin(rand.z));
-					const float falloff = 1.5;
-					color += pow(intensity / starDist, falloff);
+						const float starDist = 1 - (0.5 + 0.5 * dot(starPos, rd));
+						const float intensity = STAR_MAX_SIZE * pow(min((rand.z + 1) * 0.5, 1), 8);
+						const float falloff = 1.5;
+
+						//randomly pick a star color from within a color palette
+						const float starx = abs(starPos.x % 0.001) * 1000;
+						const float stary = abs(starPos.y % 0.001) * 1000;
+						const fixed4 starColor = fixed4(
+							1 - stary * (starx < 0.33),
+							1 - stary * (starx < 0.66),
+							1 - stary * (starx >= 0.33),
+							1);
+
+						color += starColor * pow(intensity / starDist, falloff);
+					}
 				}
 
 				return color;
@@ -125,7 +135,7 @@ Shader "Unlit/Starfield_Shader"
 				const float3 ro = _WorldSpaceCameraPos;
 
 				//altitude is negative in atmosphere
-				const float altitude = length(ro) / 20000 - 0.5;
+				const float altitude = length(ro) / (_AtmoRad * 2) - 0.5;
 				const float3 rd = normalize(input.viewDir);
 				const float3 sunDir = float3(-1, 0, 0);
 
@@ -133,7 +143,7 @@ Shader "Unlit/Starfield_Shader"
 				float maxAlpha = 100;
 				const float atmoMult = smoothstep(-0.005, 0.1, altitude);
 
-				//clamp atmoMult to higher value when on nightside of planet
+				//clamp maxAlpha to higher value when on nightside of planet
 				const float sunDot = dot(normalize(ro), sunDir);
 				const float night = smoothstep(0.15, 3, -sunDot);
 				maxAlpha *= clamp(atmoMult, night, 1);
@@ -143,18 +153,19 @@ Shader "Unlit/Starfield_Shader"
 				}
 
 				fixed4 color = 0;
-				//maxAlpha = 1000;
 				//don't calculate non-sun stars when their final alpha will be zero
-				[branch]if (maxAlpha > 0) {
+				if (maxAlpha > 0) {
 					color = getStars(rd);
 					color.a = min(maxAlpha, color.a);
 				}
 
 				//add sun regardless of atmosphere
-				float sun = brightness(rd, sunDir, .0002);
-				color += sun;
-				color.a = saturate(color.a);
-				color.rg += sun;
+				float sunIntensity = brightness(rd, sunDir, .0002);
+				float3 sunDif = rd - sunDir;
+				if (sunIntensity > 0.01 && sunIntensity < 1) {
+					sunIntensity *= 0.9 + abs(sin(atan(sunDif.y / sunDif.z) * 10)) * 0.1;
+				}
+				color += sunIntensity * _SunColor * 3;
 
 				color.rgb = pow(color.rgb, 0.4545);
 

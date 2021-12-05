@@ -340,50 +340,42 @@ Shader "Complete Sphere Impostor"
 		}
 		#endif
 
-		fixed4 frag_shadow(v2f i
-		#if defined(USE_CONSERVATIVE_DEPTH)
-			, out float outDepth : SV_DepthLessEqual
-		#else
-			// the device probably can't use conservative depth
-			  , out float outDepth : SV_Depth
-			#endif
-				) : SV_Target
+		fixed4 frag_shadow(v2f i, out float outDepth : SV_Depth) : SV_Target
 			{
-				UNITY_SETUP_INSTANCE_ID(i);
+				//UNITY_SETUP_INSTANCE_ID(i);
 
-		// ray origin
-		float3 rayOrigin = i.rayOrigin;
+			// ray origin
+			float3 rayOrigin = i.rayOrigin;
 
-		// normalize ray vector
-		float3 rayDir = normalize(i.rayDir);
+			// normalize ray vector
+			float3 rayDir = normalize(i.rayDir);
 
-		// ray sphere intersection
-		float rayHit = sphIntersect(rayOrigin, rayDir, float4(0,0,0,0.5));
+			// ray sphere intersection
+			float rayHit = sphIntersect(rayOrigin, rayDir, float4(0,0,0,0.5));
 
-		// above function returns -1 if there's no intersection
-		clip(rayHit);
+			// above function returns -1 if there's no intersection
+			clip(rayHit);
 
-		// calculate object space position from ray, front hit ray length, and ray origin
-		float3 surfacePos = rayDir * rayHit + rayOrigin;
+			// calculate object space position from ray, front hit ray length, and ray origin
+			float3 surfacePos = rayDir * rayHit + rayOrigin;
 
-		// output modified depth
-		float4 clipPos = UnityClipSpaceShadowCasterPos(surfacePos, surfacePos);
-		clipPos = UnityApplyLinearShadowBias(clipPos);
-		outDepth = clipPos.z / clipPos.w;
+			// output modified depth
+			float4 clipPos = UnityClipSpaceShadowCasterPos(surfacePos, surfacePos);
+			clipPos = UnityApplyLinearShadowBias(clipPos);
+			outDepth = clipPos.z / clipPos.w;
 
-	#if !defined(UNITY_REVERSED_Z)
-		// openGL platforms need the clip space to be rescaled
-		outDepth = outDepth * 0.5 + 0.5;
-	#endif
-
-		return 0;
+		#if !defined(UNITY_REVERSED_Z)
+			// openGL platforms need the clip space to be rescaled
+			outDepth = outDepth * 0.5 + 0.5;
+		#endif
+			return 0;
 	}
 ENDCG
 
-Pass
-{
-	Name "FORWARD"
-	Tags { "LightMode" = "ForwardBase" }
+	Pass
+	{
+		Name "FORWARD"
+		Tags { "LightMode" = "ForwardBase" }
 
 		// remove this if you plan on using MSAA super sampling
 		// for ease of demonstation purposes this is still enabled when super sampling is enabled
