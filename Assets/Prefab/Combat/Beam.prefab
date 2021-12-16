@@ -162,7 +162,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speed: 0
   hitScan: 1
-  damage: 20
+  damage: 4
   lifetime: 0.1
   fireRate: 0.3
   terrainDamage: 0.01

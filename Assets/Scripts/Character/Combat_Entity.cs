@@ -13,9 +13,8 @@ public class Combat_Entity : Entity
         manager.AddToTargetList(gameObject);
     }
 
-    protected override void Death()
+    private void OnDestroy()
     {
         manager.RemoveFromTargetList(gameObject);
-        base.Death();
     }
 }

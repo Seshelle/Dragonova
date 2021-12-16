@@ -148,24 +148,42 @@ public class Player : Combat_Entity
                 if (structureIndex < 0) structureIndex = structures.Length - 1;
                 if (structureIndex >= structures.Length) structureIndex = 0;
 
-                if (heldItem) GameObject.Destroy(heldItem);
+                if (heldItem)
+                {
+                    GameObject.Destroy(heldItem);
+                    heldItem = null;
+                    CreateStructure();
+                }
             }
 
             //build
             if (Input.GetButtonDown("Cycle"))
             {
-                if (!heldItem)
-                {
-                    GameObject block = GameObject.Instantiate(structures[structureIndex], camera.transform);
-                    block.transform.localPosition = Vector3.forward * 5;
-                    heldItem = block;
-                }
-                else
-                {
-                    //heldItem.transform.parent = manager.GetClosestPlanet(transform.position).transform;
-                    if (heldItem.GetComponent<Structure>().Place()) heldItem = null;
-                }
+                CreateStructure();
             }
+
+            if (Input.GetButtonDown("Ability1"))
+            {
+                Planet planet = manager.GetClosestPlanet(transform.position);
+                Vector3 hit = planet.PlanetRay(transform.position, camera.transform.forward);
+                GameObject block = GameObject.Instantiate(structures[0], hit, Quaternion.identity);
+                block.GetComponent<Structure>().Place();
+            }
+        }
+    }
+
+    void CreateStructure()
+    {
+        if (!heldItem)
+        {
+            GameObject block = GameObject.Instantiate(structures[structureIndex], camera.transform);
+            block.transform.localPosition = Vector3.forward * 5;
+            heldItem = block;
+        }
+        else
+        {
+            //heldItem.transform.parent = manager.GetClosestPlanet(transform.position).transform;
+            if (heldItem.GetComponent<Structure>().Place()) heldItem = null;
         }
     }
 

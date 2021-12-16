@@ -17,7 +17,7 @@ Shader "Unlit/Planet_Depth"
 				#define MAX_STEPS 200
 				#define WATER_STEPS 200
 				#define WAVE_HEIGHT 0.0004
-				#define OCEAN_OPAQUE 0.1
+				#define OCEAN_OPAQUE 0
 				#define FOG 12
 				#define SH_STEPS 32
 				#define EPSILON 0.00001
@@ -380,7 +380,7 @@ Shader "Unlit/Planet_Depth"
 						//Water is more opaque the deeper it is, and darker on the night side of the planet
 						const half3 deepWater = half3(0.0001, 0.001, 0.04);
 						const half3 shallowWater = half3(0.0001, 0.03, 0.02);
-						const half oceanEffect = clamp(1 - exp(-oceanDepth * 600), OCEAN_OPAQUE, 1);
+						const half oceanEffect = 1 - exp(-oceanDepth * 300);
 						const half3 waterCol = lerp(shallowWater, deepWater, oceanEffect);
 						//const half nightSide = smoothstep(-0.1, 0, dot(lig, surfNor));
 						color = half4(waterCol, oceanEffect);

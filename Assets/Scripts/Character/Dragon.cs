@@ -11,6 +11,7 @@ public class Dragon : MonoBehaviour
     public float deceleration = 20;
     public float turningSpeed = 1.0f;
     public float followAltitude = 50;
+    public Animator animator;
 
     Player player;
     Planet_Manager manager;
@@ -19,7 +20,7 @@ public class Dragon : MonoBehaviour
     Vector3 rotVec;
     Vector3 moveDirection = Vector3.zero;
     bool isMounted = true;
-    float timeSinceBoost = 0;
+    float boostTime = 0;
 
     private void Start()
     {
@@ -33,22 +34,27 @@ public class Dragon : MonoBehaviour
     {
         if (isMounted)
         {
-            float driftTurn = 2;
+            float driftTurn = 1;
             float decelerateAmount = deceleration;
-            if (Input.GetButton("Sprint"))
+            if (boostTime < 0) boostTime += Time.deltaTime;
+
+            if (Input.GetButton("Sprint") && boostTime >= 0)
             {
                 //charge up a boost
-                timeSinceBoost += Time.deltaTime;
-                decelerateAmount *= 2;
+                animator.SetBool("Drifting", true);
+                boostTime += Time.deltaTime;
+                driftTurn = 2;
+                //decelerateAmount *= 2;
                 moveDirection = Vector3.RotateTowards(moveDirection, transform.forward, Time.deltaTime / 4, 0);
-                if (timeSinceBoost > maxBoostTime) timeSinceBoost = maxBoostTime;
+                if (boostTime > maxBoostTime) boostTime = maxBoostTime;
             }
-            else
+            else moveDirection = transform.forward;
+
+            if (Input.GetButtonUp("Sprint") && boostTime > 0)
             {
-                moveDirection = transform.forward;
-                driftTurn = 1;
-                moveSpeed += timeSinceBoost * (boostSpeed / maxBoostTime);
-                timeSinceBoost = 0;
+                animator.SetBool("Drifting", false);
+                moveSpeed += boostTime * (boostSpeed / maxBoostTime);
+                boostTime = -2;
             }
 
             if (moveSpeed > maxSpeed) moveSpeed = maxSpeed;
@@ -66,6 +72,10 @@ public class Dragon : MonoBehaviour
             rotVec = new Vector3(Input.GetAxis("Vertical"), Input.GetAxis("Horizontal"), Input.GetAxis("Roll"));
             Quaternion deltaRotation = Quaternion.Euler(rotVec * turningSpeed * driftTurn * Time.deltaTime);
             rigidbody.MoveRotation(rigidbody.rotation * deltaRotation);
+
+            animator.SetFloat("UpDown", rotVec.x);
+            animator.SetFloat("LeftRight", rotVec.y);
+            animator.SetFloat("Roll", rotVec.z);
         }
         else
         {

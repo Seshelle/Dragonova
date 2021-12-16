@@ -6,25 +6,26 @@ public class Shadow_Cam : MonoBehaviour
 {
     public GameObject mainCam;
     Transform camTransform;
-    public Renderer[] renders;
+    Renderer myRenderer;
 
-    private void Start()
+    private void Awake()
     {
         camTransform = mainCam.transform;
+        myRenderer = GetComponent<Renderer>();
     }
 
     // Update is called once per frame
     void LateUpdate()
     {
-        transform.SetPositionAndRotation(new Vector3(transform.position.x, camTransform.position.y, camTransform.position.z), transform.rotation);
+        Vector3 round = new Vector3(transform.position.x, camTransform.position.y, camTransform.position.z);
+        //round.y = Mathf.Round(round.y);
+        //round.z = Mathf.Round(round.z);
+        transform.SetPositionAndRotation(round, transform.rotation);
     }
 
     public void SetTextures(Cubemap cube, float rotationSpeed)
     {
-        foreach (Renderer r in renders)
-        {
-            r.material.SetTexture("_MainTex", cube);
-            r.material.SetFloat("_RotationSpeed", rotationSpeed);
-        }
+        myRenderer.material.SetTexture("_MainTex", cube);
+        myRenderer.material.SetFloat("_RotationSpeed", rotationSpeed);
     }
 }

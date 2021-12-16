@@ -84,6 +84,22 @@ public class Planet_Manager : MonoBehaviour
         return targetList;
     }
 
+    public GameObject ClosestTarget(Vector3 pos)
+    {
+        float minDist = 9999999;
+        GameObject target = null;
+        foreach (GameObject g in targetList)
+        {
+            float dist = Vector3.Distance(pos, g.transform.position);
+            if (dist < minDist && dist > 0)
+            {
+                minDist = dist;
+                target = g;
+            }
+        }
+        return target;
+    }
+
     public void AddToTargetList(GameObject target)
     {
         targetList.Add(target);

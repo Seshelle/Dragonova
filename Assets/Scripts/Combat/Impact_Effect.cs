@@ -14,7 +14,7 @@ public class Impact_Effect : MonoBehaviour
         timeAlive += Time.deltaTime;
         if (timeAlive > lifetime)
         {
-            GameObject.Destroy(transform.parent.gameObject);
+            GameObject.Destroy(gameObject);
         }
     }
 }

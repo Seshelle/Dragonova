@@ -38,7 +38,6 @@ public class Homing_Projectile : Projectile
     protected override void FixedUpdate()
     {
         base.FixedUpdate();
-        float speedMult = 0.5f;
         //use a basic estimate to aim at where the target will be
         if (target)
         {
@@ -51,12 +50,9 @@ public class Homing_Projectile : Projectile
             //turn towards target
             Quaternion targetDir = Quaternion.LookRotation(targetPos - transform.position);
             rigidbody.MoveRotation(Quaternion.RotateTowards(transform.rotation, targetDir, Time.deltaTime * turnSpeed));
-
-            float targetDot = Vector3.Dot(transform.forward, Vector3.Normalize(targetPos - transform.position));
-            speedMult = Mathf.Clamp(targetDot, 0.5f, 1);
         }
 
         //move forwards
-        rigidbody.MovePosition(transform.position + (transform.forward * speed * speedMult + momentum) * Time.deltaTime);
+        rigidbody.MovePosition(transform.position + (transform.forward * speed + momentum) * Time.deltaTime);
     }
 }

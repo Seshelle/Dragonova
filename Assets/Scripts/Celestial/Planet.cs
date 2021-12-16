@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using System.IO;
 
 public class Planet : MonoBehaviour
 {
@@ -35,13 +36,14 @@ public class Planet : MonoBehaviour
             Planet myScript = (Planet)target;
             if (GUILayout.Button("Add Noise"))
             {
-                myScript.CalcNoise(0);
+                myScript.CalcNoise();
             }
         }
     }
 #endif
 
     Cubemap heightMap;
+    int seed = 0;
     Dictionary<CubemapFace, Texture2D> planetFaces = new Dictionary<CubemapFace, Texture2D>();
     Material mat;
     float radius;
@@ -56,7 +58,10 @@ public class Planet : MonoBehaviour
 
         //get level data to generate
         Level_Data levelData = GameObject.FindGameObjectWithTag("LevelData").GetComponent<Level_Data>();
-        CalcNoise(levelData.GetPlanetSeed());
+        seed = levelData.GetPlanetSeed();
+        CalcNoise();
+        if (!mat) mat = GetComponent<Renderer>().material;
+        ApplyToSharedMaterial();
 
         //sync with current shader properties
         if (!mat) mat = GetComponent<Renderer>().material;
@@ -65,7 +70,7 @@ public class Planet : MonoBehaviour
         seaLevel = mat.GetFloat("_SeaLevel");
         worldSeaLevel = (radius + seaLevel) * transform.localScale.x;
 
-        AddObjects(levelData.GetPlanetSeed());
+        AddObjects();
     }
 
     private void FixedUpdate()
@@ -89,11 +94,12 @@ public class Planet : MonoBehaviour
         return value;
     }
 
-    public void CalcNoise(int seed)
+    public void CalcNoise()
     {
         heightMap = new Cubemap(textureSize, TextureFormat.RG32, false);
         heightMap.anisoLevel = 0;
         heightMap.filterMode = FilterMode.Bilinear;
+
         Random.InitState(seed);
         const float range = 5000;
         xOrg = Random.value * range - range / 2;
@@ -110,36 +116,52 @@ public class Planet : MonoBehaviour
         CreateFace(CubemapFace.PositiveY, xOrg, yOrg - heightMap.height);
 
         heightMap.Apply(false);
-        if (!mat) mat = GetComponent<Renderer>().material;
-        ApplyToSharedMaterial();
     }
 
     void CreateFace(CubemapFace face, float xStart, float yStart)
     {
-        Color[] pixels = new Color[heightMap.width * heightMap.height];
-        const float warpScale = 4f;
-        for (float x = xStart; x < heightMap.width + xStart; x++)
-        {
-            for (float y = yStart; y < heightMap.height + yStart; y++)
-            {
-                float pixX = x / heightMap.width;
-                float pixY = y / heightMap.height;
-                float xCoord = xOrg + pixX;
-                float yCoord = yOrg + pixY;
-
-                float scaledX = xCoord * scale;
-                float scaledY = yCoord * scale;
-                float xWarp = FractalNoise(scaledX + 0.03f, scaledY + 0.037f) * warpScale;
-                float yWarp = FractalNoise(scaledX + 0.043f, scaledY + 0.03f) * warpScale;
-                float redChannel = FractalNoise(scaledX + xWarp, scaledY + yWarp);
-
-                pixels[(int)(y - yStart) * heightMap.width + (int)(x - xStart)] = new Color(redChannel, 0, 0, 1);
-            }
-        }
-        heightMap.SetPixels(pixels, face);
         planetFaces[face] = new Texture2D(heightMap.width, heightMap.height, TextureFormat.RG32, false);
-        planetFaces[face].SetPixels(pixels);
-        planetFaces[face].Apply(false);
+        //check if planet file already exists
+        var dirPath = Application.dataPath + "/../Assets/Binaries/PlanetData/";
+        if (!Directory.Exists(dirPath)) Directory.CreateDirectory(dirPath);
+        string path = dirPath + seed.ToString() + face.ToString() + ".png";
+        if (File.Exists(path))
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            Texture2D texCopy = new Texture2D(heightMap.width, heightMap.height, TextureFormat.RG32, false);
+            texCopy.LoadImage(bytes);
+            planetFaces[face].SetPixels(texCopy.GetPixels());
+        }
+        else
+        {
+            Color[] pixels = new Color[heightMap.width * heightMap.height];
+            const float warpScale = 4f;
+            for (float x = xStart; x < heightMap.width + xStart; x++)
+            {
+                for (float y = yStart; y < heightMap.height + yStart; y++)
+                {
+                    float pixX = x / heightMap.width;
+                    float pixY = y / heightMap.height;
+                    float xCoord = xOrg + pixX;
+                    float yCoord = yOrg + pixY;
+
+                    float scaledX = xCoord * scale;
+                    float scaledY = yCoord * scale;
+                    float xWarp = FractalNoise(scaledX + 0.03f, scaledY + 0.037f) * warpScale;
+                    float yWarp = FractalNoise(scaledX + 0.043f, scaledY + 0.03f) * warpScale;
+                    float redChannel = FractalNoise(scaledX + xWarp, scaledY + yWarp);
+
+                    pixels[(int)(y - yStart) * heightMap.width + (int)(x - xStart)] = new Color(redChannel, 0, 0, 1);
+                }
+            }
+            //heightMap.SetPixels(pixels, face);
+            planetFaces[face].SetPixels(pixels);
+            planetFaces[face].Apply(false);
+            byte[] bytes = planetFaces[face].EncodeToPNG();
+            File.WriteAllBytes(dirPath + seed.ToString() + face.ToString() + ".png", bytes);
+        }
+
+        heightMap.SetPixels(planetFaces[face].GetPixels(), face);
     }
 
     void ApplyToSharedMaterial()
@@ -148,8 +170,9 @@ public class Planet : MonoBehaviour
         shadowWrap.SetTextures(heightMap, rotationSpeed);
     }
 
-    void AddObjects(int seed)
+    void AddObjects()
     {
+        Random.InitState(seed);
         for (int i = 0; i < 1000; i++)
         {
             Vector3 treePos = new Vector3(Random.value * 2 - 1, Random.value * 2 - 1, Random.value * 2 - 1).normalized;
@@ -172,12 +195,12 @@ public class Planet : MonoBehaviour
             }
         }
 
-        Vector3 powerPos = new Vector3(Random.value * 2 - 1, Random.value * 0.2f - 0.1f, Random.value * 2 - 1).normalized;
+        //Vector3 powerPos = new Vector3(Random.value * 2 - 1, Random.value * 0.2f - 0.1f, Random.value * 2 - 1).normalized;
+        Vector3 powerPos = -Vector3.forward;
         powerPos *= GetPlanetHeight(powerPos, 0);
         Quaternion powerRot = Quaternion.LookRotation(powerPos) * Quaternion.Euler(0, 0, 0);
         GameObject power = GameObject.Instantiate(powerSource, powerPos, powerRot);
         power.transform.parent = transform;
-        power.transform.localScale = Vector3.one * 100;
     }
 
     public bool IsInPlanet(Vector3 pos)
@@ -188,6 +211,20 @@ public class Planet : MonoBehaviour
     public float DistanceToPlanet(Vector3 pos)
     {
         return pos.magnitude - GetPlanetHeight(pos);
+    }
+
+    public Vector3 PlanetRay(Vector3 origin, Vector3 direction)
+    {
+        Vector3 hit = Vector3.zero;
+        float distance = 0;
+        for (int i = 0; i < 200; i++)
+        {
+            hit = origin + direction * distance;
+            float estimate = DistanceToPlanet(hit);
+            if (estimate < 0.1 || distance > 20000) break;
+            distance += estimate;
+        }
+        return hit;
     }
 
     CubemapFace GetSurfaceFace(Vector3 p)
@@ -308,9 +345,8 @@ public class Planet : MonoBehaviour
         Color oldData = planetFaces[face].GetPixel(pixelX, pixelY);
         Color newData = new Color(oldData.r, oldData.g + amount, 1);
         planetFaces[face].SetPixel(pixelX, pixelY, newData);
-
-        heightMap.SetPixels(planetFaces[face].GetPixels(), face);
         heightMap.SetPixel(face, pixelX, pixelY, newData);
+        planetFaces[face].Apply(false);
         heightMap.Apply(false);
         if (!mat) mat = GetComponent<Renderer>().material;
         ApplyToSharedMaterial();
